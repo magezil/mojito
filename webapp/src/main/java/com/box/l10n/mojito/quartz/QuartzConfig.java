@@ -31,6 +31,8 @@ public class QuartzConfig {
 
     Logger logger = LoggerFactory.getLogger(getClass());
 
+    public static final String DYNAMIC_GROUP_NAME = "DYNAMIC";
+
     @Autowired
     ApplicationContext applicationContext;
 
