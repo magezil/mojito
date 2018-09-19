@@ -6,9 +6,10 @@ import com.box.l10n.mojito.cli.ConsoleWriter;
 import com.box.l10n.mojito.cli.command.param.Param;
 import com.box.l10n.mojito.cli.filefinder.FileMatch;
 import com.box.l10n.mojito.cli.filefinder.file.FileType;
+import com.box.l10n.mojito.cli.filefinder.file.POFileType;
 import com.box.l10n.mojito.rest.client.AssetClient;
 import com.box.l10n.mojito.rest.client.RepositoryClient;
-import com.box.l10n.mojito.rest.client.TextUnitWithUsageClient;
+import com.box.l10n.mojito.rest.client.GitBlameWithUsageClient;
 import com.box.l10n.mojito.rest.client.exception.PollableTaskException;
 import com.box.l10n.mojito.rest.entity.*;
 import org.eclipse.jgit.api.BlameCommand;
@@ -72,7 +73,7 @@ public class GitBlameCommand extends Command {
     RepositoryClient repositoryClient;
 
     @Autowired
-    TextUnitWithUsageClient textUnitWithUsageClient;
+    GitBlameWithUsageClient gitBlameWithUsageClient;
 
     @Autowired
     CommandHelper commandHelper;
@@ -91,15 +92,31 @@ public class GitBlameCommand extends Command {
         Repository repository = commandHelper.findRepositoryByName(repositoryParam);
         List<PollableTask> pollableTasks = new ArrayList<>();
 
-        List<GitBlameWithUsage> textUnitsToBlame = textUnitWithUsageClient.getTextUnitToBlame(repository.getId());
+        // loop until no more gitBlameWithUsages fetched
+        boolean fetchGitBlameWithUsages = true;
+        int offset = 0;
+        while (fetchGitBlameWithUsages) {
+             List<GitBlameWithUsage> gitBlameWithUsages = gitBlameWithUsageClient.getGitBlameWithUsages(repository.getId(), offset);
+             offset += gitBlameWithUsages.size();
+             fetchGitBlameWithUsages = gitBlameWithUsages.size() == 0;
 
-        if (fileType.getSourceFileExtension().equals("pot")) {
-            blameWithTextUnitUsages(textUnitsToBlame);
-        } else {
-            blameSourceFiles(textUnitsToBlame);
+            if (fileType instanceof POFileType) {
+                blameWithTextUnitUsages(gitBlameWithUsages);
+            } else {
+                blameSourceFiles(gitBlameWithUsages);
+            }
+
+            pollableTasks.add(saveGitInformation(gitBlameWithUsages));
         }
 
-        saveGitInformation(textUnitsToBlame);
+        try {
+            logger.debug("Wait for all \"git-blame\" tasks to be finished");
+            for (PollableTask pollableTask : pollableTasks) {
+                commandHelper.waitForPollableTask(pollableTask.getId());
+            }
+        } catch (PollableTaskException e) {
+            throw new CommandException(e.getMessage(), e.getCause());
+        }
 
         consoleWriter.fg(Ansi.Color.GREEN).newLine().a("Finished").println(2);
     }
@@ -122,7 +139,7 @@ public class GitBlameCommand extends Command {
                 String lineText = blameResultForFile.getResultContents().getString(i);
 
                 // make getTextUnitFromLine return a list and iterate through all [basically for plural forms]
-                List<GitBlameWithUsage> gitBlameWithUsageList = getTextUnitNameFromLine(lineText, gitBlameWithUsages);
+                List<GitBlameWithUsage> gitBlameWithUsageList = getGitBlameWithUsagesFromLine(lineText, gitBlameWithUsages);
                 // iterate through list and set results
                 for (GitBlameWithUsage gitBlameWithUsage : gitBlameWithUsageList) {
                     getBlameResults(i, blameResultForFile, gitBlameWithUsage);
@@ -139,15 +156,15 @@ public class GitBlameCommand extends Command {
      */
     void blameWithTextUnitUsages(List<GitBlameWithUsage> gitBlameWithUsages) throws CommandException {
 
-        for (GitBlameWithUsage textUnitWithUsage : gitBlameWithUsages) {
+        for (GitBlameWithUsage gitBlameWithUsage : gitBlameWithUsages) {
 
-            for (String usage : textUnitWithUsage.getUsages()) {
+            for (String usage : gitBlameWithUsage.getUsages()) {
                 String filename = getFileName(usage);
                 int line = getLineNumber(usage);
                 if (extractedFilePrefix != null)
                     filename = filename.replace(extractedFilePrefix, "");
                 BlameResult blameResultForFile = getBlameResultForFile(filename);
-                getBlameResults(line, blameResultForFile, textUnitWithUsage);
+                getBlameResults(line, blameResultForFile, gitBlameWithUsage);
             }
         }
 
@@ -157,15 +174,8 @@ public class GitBlameCommand extends Command {
      * Save text units information from git-blame
      * @param gitBlameWithUsages
      */
-    private void saveGitInformation(List<GitBlameWithUsage> gitBlameWithUsages) throws CommandException {
-        PollableTask pollableTask = textUnitWithUsageClient.saveGitInfoForTextUnits(gitBlameWithUsages);
-        try {
-            logger.debug("Wait for save batch task to complete");
-//            commandHelper.waitForPollableTask(pollableTask.getId());
-
-        } catch (PollableTaskException e) {
-            throw new CommandException(e.getMessage(), e.getCause());
-        }
+    private PollableTask saveGitInformation(List<GitBlameWithUsage> gitBlameWithUsages) throws CommandException {
+        return gitBlameWithUsageClient.saveGitInfoForTextUnits(gitBlameWithUsages);
     }
 
     /**
@@ -235,12 +245,12 @@ public class GitBlameCommand extends Command {
     }
 
     /**
-     * Checks if the given line contains text unit(s)
+     * Checks if the given line contains text unit(s) to git-blame
      * @param line
      * @param gitBlameWithUsages
      * @return list of GitBlameWithUsage objects that match current line
      */
-    List<GitBlameWithUsage> getTextUnitNameFromLine(String line, List<GitBlameWithUsage> gitBlameWithUsages) {
+    List<GitBlameWithUsage> getGitBlameWithUsagesFromLine(String line, List<GitBlameWithUsage> gitBlameWithUsages) {
 
         List<GitBlameWithUsage> gitBlameWithUsagesWithLine = new ArrayList<>();
 
@@ -259,7 +269,7 @@ public class GitBlameCommand extends Command {
      * @param textUnitName
      * @return text unit name as string in source file
      */
-    static String textUnitNameToStringInSourceFile(String textUnitName) {
+     String textUnitNameToStringInSourceFile(String textUnitName) {
 
         String stringInFile = textUnitName;
 
@@ -275,7 +285,7 @@ public class GitBlameCommand extends Command {
      * @param usage
      * @return
      */
-    static String getFileName(String usage) {
+     String getFileName(String usage) {
         return usage.split(":")[0];
     }
 
@@ -285,7 +295,7 @@ public class GitBlameCommand extends Command {
      * @param usage
      * @return
      */
-    static int getLineNumber(String usage) throws CommandException {
+     int getLineNumber(String usage) throws CommandException {
         try {
             return Integer.parseInt(usage.split(":")[1]) - 1;
         } catch (ArrayIndexOutOfBoundsException e) {
