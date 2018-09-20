@@ -93,12 +93,12 @@ public class GitBlameCommand extends Command {
         List<PollableTask> pollableTasks = new ArrayList<>();
 
         // loop until no more gitBlameWithUsages fetched
-        boolean fetchGitBlameWithUsages = true;
+        int numGitBlameWithUsages;
         int offset = 0;
-        while (fetchGitBlameWithUsages) {
+        do {
              List<GitBlameWithUsage> gitBlameWithUsages = gitBlameWithUsageClient.getGitBlameWithUsages(repository.getId(), offset);
-             offset += gitBlameWithUsages.size();
-             fetchGitBlameWithUsages = gitBlameWithUsages.size() == 0;
+             numGitBlameWithUsages = gitBlameWithUsages.size();
+             offset += numGitBlameWithUsages;
 
             if (fileType instanceof POFileType) {
                 blameWithTextUnitUsages(gitBlameWithUsages);
@@ -107,7 +107,7 @@ public class GitBlameCommand extends Command {
             }
 
             pollableTasks.add(saveGitInformation(gitBlameWithUsages));
-        }
+        } while (numGitBlameWithUsages > 0);
 
         try {
             logger.debug("Wait for all \"git-blame\" tasks to be finished");
@@ -138,9 +138,7 @@ public class GitBlameCommand extends Command {
             for (int i = 0; i < blameResultForFile.getResultContents().size(); i++) {
                 String lineText = blameResultForFile.getResultContents().getString(i);
 
-                // make getTextUnitFromLine return a list and iterate through all [basically for plural forms]
                 List<GitBlameWithUsage> gitBlameWithUsageList = getGitBlameWithUsagesFromLine(lineText, gitBlameWithUsages);
-                // iterate through list and set results
                 for (GitBlameWithUsage gitBlameWithUsage : gitBlameWithUsageList) {
                     getBlameResults(i, blameResultForFile, gitBlameWithUsage);
                 }
@@ -174,7 +172,9 @@ public class GitBlameCommand extends Command {
      * Save text units information from git-blame
      * @param gitBlameWithUsages
      */
-    private PollableTask saveGitInformation(List<GitBlameWithUsage> gitBlameWithUsages) throws CommandException {
+    private PollableTask saveGitInformation(List<GitBlameWithUsage> gitBlameWithUsages) {
+        logger.debug("saveGitInformation");
+
         return gitBlameWithUsageClient.saveGitInfoForTextUnits(gitBlameWithUsages);
     }
 
