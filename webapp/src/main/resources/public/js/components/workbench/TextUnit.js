@@ -13,6 +13,7 @@ import SearchParamsStore from "../../stores/workbench/SearchParamsStore";
 import RepositoryStore from "../../stores/RepositoryStore";
 import TextUnitStore from "../../stores/workbench/TextUnitStore";
 import TextUnitsReviewModal from "./TextUnitsReviewModal";
+import GitBlameInfoModal from "./GitBlameInfoModal";
 import TextUnitSDK from "../../sdk/TextUnit";
 import WorkbenchActions from "../../actions/workbench/WorkbenchActions";
 import GitBlameActions from "../../actions/workbench/GitBlameActions";
@@ -83,6 +84,9 @@ let TextUnit = React.createClass({
 
             /** @type {Boolean} */
             "isShowModal": false,
+
+            /** @type {Boolean} */
+            "isShowGitBlameModal" : false,
 
             /** @type {Boolean} */
             "isErrorAlertShown": false,
@@ -336,6 +340,18 @@ let TextUnit = React.createClass({
     },
 
     /**
+     * Displays the confirmation modal dialog for delete and review actions
+     * @param {object} e - The click event object
+     */
+    onGitBlameClicked(e) {
+
+        e.stopPropagation();
+        this.setState({
+            "isShowGitBlameModal": true
+        });
+    },
+
+    /**
      * Updates the textunit with comments and performs the chosen action on the modal popup.
      * @param {comment: string, textUnitAction: "review"/"reject"/"accept"/""} - The data sent by TextUnitsActionModal.
      */
@@ -371,7 +387,8 @@ let TextUnit = React.createClass({
 
     closeModal() {
         this.setState({
-            "isShowModal": false
+            "isShowModal": false,
+            "isShowGitBlameModal": false
         });
     },
 
@@ -694,6 +711,24 @@ let TextUnit = React.createClass({
         return ui;
     },
 
+
+
+    /**
+     * @returns {JSX} The JSX for the TextUnitsReviewModal if isShowModal is true, empty string otherwise.
+     */
+    getGitBlameModal() {
+        let ui = "";
+        if (this.state.isShowGitBlameModal) {
+            let textUnitArray = [this.getCloneOfTextUnitFromProps()];
+            ui = (
+                <GitBlameInfoModal isShowModal={this.state.isShowGitBlameModal}
+                                      onReviewModalSaveClicked={this.isShowGitBlameModal}
+                                      onCloseModal={this.closeModal} textUnitsArray={textUnitArray}/>
+            );
+        }
+        return ui;
+    },
+
     handleErrorAlertDismiss() {
 
         WorkbenchActions.resetErrorState(this.props.textUnit);
@@ -823,6 +858,20 @@ let TextUnit = React.createClass({
                 </span>
         );
     },
+
+    renderGitBlameInfo() {
+        let assetPathWithGitInfo = this.addZeroWidthSpace("Click me"); // to make the tooltip text to wrap
+        let assetPathTooltip = <Tooltip id="{this.props.textUnit.getId()}-assetPath">{assetPathWithGitInfo}</Tooltip>;
+
+        return (<span className="clickable textunit-name"
+                      onClick={this.onStringIdClick}>
+                    <OverlayTrigger placement="top" overlay={assetPathTooltip}>
+                        <span className="textunit-assetpath glyphicon glyphicon-info-sign"
+                              onClick={this.onGitBlameClicked} />
+                    </OverlayTrigger>
+                </span>
+        );
+    },
     
     addZeroWidthSpace(string) {
         
@@ -907,6 +956,7 @@ let TextUnit = React.createClass({
                                 {this.renderDoNotTranslateLabel()}
                                 {this.renderPluralFormLabel()}
                                 {this.renderName()}
+                                {this.renderGitBlameInfo()}
                             </Col>
                         </Row>
                         <Row className='show-grid'>
@@ -926,6 +976,7 @@ let TextUnit = React.createClass({
                     </Grid>
                 </div>
                 {this.getTextUnitReviewModal()}
+                {this.getGitBlameModal()}
                 {this.getCancelConfirmationModel()}
             </div>
         );
