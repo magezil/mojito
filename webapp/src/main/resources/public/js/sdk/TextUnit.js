@@ -3,10 +3,10 @@ import _ from "lodash";
 /**
  * Used to communicate with textunits WS (search for translated/untranslated strings, create/update new translation)
  *
- * A TextUnit is bound to a TmTextUnit and a target locale. It reprensents a current translation or an untranslated string.
+ * A TextUnit is bound to a TmTextUnit and a target locale. It represents a current translation or an untranslated string.
  *
  * A TmTextUnit is the entity that represent only a string that needs to be translated, it's not bound to a target locale.
- * Mutliple TmTextUnitVariant (translation) are linked to a TmTextUnit.
+ * Multiple TmTextUnitVariant (translation) are linked to a TmTextUnit.
  *
  */
 export default
