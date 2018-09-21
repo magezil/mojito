@@ -90,6 +90,14 @@ class TextUnitClient extends BaseClient {
         });
     }
 
+    getGitBlameInfo(textUnit) {
+        return this.get(this.getUrl() + "/gitBlameWithUsages", {"repositoryNames[]": textUnit.getRepositoryName()});
+        // mock data
+        // return new Promise(function(resolve, reject) {
+        //     resolve({"tmTextUnitId": 1, "gitBlame": {"authorName": "abc", "authorEmail": "abc@xyz.com", "commitName": "lskdfa123", "commitTime": "123"}, "usages": ["file.js"]});
+        // });
+    }
+
     getAssetTextUnitsUrl(assetId) {
         return this.baseUrl + 'virtualAssets/' + assetId + '/textUnits';
     }

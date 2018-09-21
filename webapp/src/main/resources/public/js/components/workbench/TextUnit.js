@@ -15,6 +15,7 @@ import TextUnitStore from "../../stores/workbench/TextUnitStore";
 import TextUnitsReviewModal from "./TextUnitsReviewModal";
 import TextUnitSDK from "../../sdk/TextUnit";
 import WorkbenchActions from "../../actions/workbench/WorkbenchActions";
+import GitBlameActions from "../../actions/workbench/GitBlameActions";
 import Locales from "../../utils/Locales";
 import {
     Alert,
@@ -82,6 +83,9 @@ let TextUnit = React.createClass({
 
             /** @type {Boolean} */
             "isShowModal": false,
+
+            /** @type {Boolean} */
+            "isShowGitBlameModal" : false,
 
             /** @type {Boolean} */
             "isErrorAlertShown": false,
@@ -370,7 +374,7 @@ let TextUnit = React.createClass({
 
     closeModal() {
         this.setState({
-            "isShowModal": false
+            "isShowModal": false,
         });
     },
 
@@ -624,7 +628,6 @@ let TextUnit = React.createClass({
      * @param {SyntheticEvent} e
      */
     onStringIdClick(e) {
-
         e.stopPropagation();
 
         WorkbenchActions.searchParamsChanged({
@@ -636,6 +639,12 @@ let TextUnit = React.createClass({
             "bcp47Tags": RepositoryStore.getAllBcp47TagsForRepositoryIds(SearchParamsStore.getState().repoIds),
         });
     },
+
+    onTextUnitInfoClick(e){
+        e.stopPropagation();
+
+        GitBlameActions.openWithTextUnit(this.props.textUnit);
+    },
     
     /**
      * Handle click on the asset path icon: stop event propagation (no need to bubble
@@ -645,7 +654,6 @@ let TextUnit = React.createClass({
      * @param {SyntheticEvent} e
      */
     onAssetPathClick(e) {
-
         e.stopPropagation();
 
         WorkbenchActions.searchParamsChanged({
@@ -677,6 +685,7 @@ let TextUnit = React.createClass({
         let ui = "";
         if (this.state.isShowModal) {
             let textUnitArray = [this.getCloneOfTextUnitFromProps()];
+
             ui = (
                 <TextUnitsReviewModal isShowModal={this.state.isShowModal}
                                       onReviewModalSaveClicked={this.performActionOnTextUnit}
@@ -798,6 +807,7 @@ let TextUnit = React.createClass({
     renderName() {
         let assetPathWithZeroWidthSpace = this.addZeroWidthSpace(this.props.textUnit.getAssetPath()); // to make the tooltip text to wrap
         let assetPathTooltip = <Tooltip id="{this.props.textUnit.getId()}-assetPath">{assetPathWithZeroWidthSpace}</Tooltip>;
+        let assetPathWithGitInfoTooltip = <Tooltip id="{this.props.textUnit.getId()}-gitInfo">Some info</Tooltip>;
 
         return (<span className="clickable textunit-name"
                       onClick={this.onStringIdClick}>
@@ -806,10 +816,15 @@ let TextUnit = React.createClass({
                         <span className="textunit-assetpath glyphicon glyphicon-level-up mls" 
                                onClick={this.onAssetPathClick} />
                     </OverlayTrigger>
+
+                    <OverlayTrigger placement="top" overlay={assetPathWithGitInfoTooltip}>
+                        <span className="textunit-gitInfo glyphicon glyphicon-info-sign mls"
+                              onClick={this.onTextUnitInfoClick} />
+                    </OverlayTrigger>
                 </span>
         );
     },
-    
+
     addZeroWidthSpace(string) {
         
         let newString = "";

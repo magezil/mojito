@@ -61,9 +61,9 @@ let TextUnitsreviewModal = React.createClass({
      * Closes the modal and calls the parent action handler to mark the modal as closed
      */
     closeModal() {
-        this.setState({
-            isShowModal: false
-        });
+        // this.setState({
+        //     isShowModal: false
+        // });
         this.props.onCloseModal();
     },
 

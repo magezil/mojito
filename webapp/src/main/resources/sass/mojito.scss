@@ -416,11 +416,20 @@ div.textunit label {
     white-space: pre-wrap;
 }
 
-.textunit-name:hover .textunit-assetpath {
+.textunit-name:hover .textunit-assetpath  {
     visibility: visible;
 }
 
 .textunit-name .textunit-assetpath {
+    visibility: hidden;
+    color: $brand-success;
+}
+
+.textunit-name:hover .textunit-gitInfo  {
+    visibility: visible;
+}
+
+.textunit-name .textunit-gitInfo {
     visibility: hidden;
     color: $brand-success;
 }
