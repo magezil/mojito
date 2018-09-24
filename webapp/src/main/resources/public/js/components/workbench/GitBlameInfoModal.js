@@ -9,7 +9,6 @@ let TextUnitsGitBlameModal = React.createClass({
     propTypes() {
         return {
             "isShowGitBlameModal": PropTypes.bool.isRequired,
-            "repoIds": PropTypes.array,
             "repositories": PropTypes.array
         };
     },
@@ -17,7 +16,6 @@ let TextUnitsGitBlameModal = React.createClass({
     getDefaultProps() {
         return {
             "isShowGitBlameModal": false,
-            "repoIds": [],
             "repositories": []
         };
     },
@@ -29,11 +27,13 @@ let TextUnitsGitBlameModal = React.createClass({
      *  }}
      */
     getInitialState() {
-
         return {
-            "repoIds": this.props.repoIds,
-            "repositories": this.props.repositories
+            "repositoryNames": this.getInitialRepositoryNames()
         };
+    },
+
+    getInitialRepositoryNames() {
+        return this.props.repositories.map((repo) => repo.name);
     },
 
     /**
@@ -53,7 +53,7 @@ let TextUnitsGitBlameModal = React.createClass({
                     <Modal.Title><FormattedMessage id="textUnit.gitBlame.title"/></Modal.Title>
                 </Modal.Header>
                 <Modal.Body>
-                    <div>Repository name</div>
+                    <div>Repository name : {this.state.repositoryNames} </div>
                     <div>Author name</div>
                     <div>Author email</div>
                     <div>Commit name</div>

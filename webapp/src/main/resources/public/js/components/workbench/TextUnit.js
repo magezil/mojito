@@ -11,6 +11,7 @@ import SearchConstants from "../../utils/SearchConstants";
 import SearchResultsStore from "../../stores/workbench/SearchResultsStore";
 import SearchParamsStore from "../../stores/workbench/SearchParamsStore";
 import RepositoryStore from "../../stores/RepositoryStore";
+import RepositoriesStore from "../../stores/RepositoryStore";
 import TextUnitStore from "../../stores/workbench/TextUnitStore";
 import TextUnitsReviewModal from "./TextUnitsReviewModal";
 import GitBlameInfoModal from "./GitBlameInfoModal";
@@ -714,8 +715,8 @@ let TextUnit = React.createClass({
             let textUnitArray = [this.getCloneOfTextUnitFromProps()];
             ui = (
                 <GitBlameInfoModal isShowModal={this.state.isShowGitBlameModal}
-                                      onReviewModalSaveClicked={this.isShowGitBlameModal}
-                                      onCloseModal={this.closeModal} textUnitsArray={textUnitArray}/>
+                                   repositories={RepositoriesStore.getState().repositories.slice().sort()}
+                                   onCloseModal={this.closeModal} textUnitsArray={textUnitArray}/>
             );
         }
         return ui;
@@ -847,11 +848,11 @@ let TextUnit = React.createClass({
 
     renderGitBlameInfo() {
         let assetPathWithGitInfo = this.addZeroWidthSpace("Click me"); // to make the tooltip text to wrap
-        let assetPathTooltip = <Tooltip id="{this.props.textUnit.getId()}-assetPath">{assetPathWithGitInfo}</Tooltip>;
+        let assetPathWithGitInfoTooltip = <Tooltip id="{this.props.textUnit.getId()}-gitInfo">{assetPathWithGitInfo}</Tooltip>;
 
         return (<span className="clickable textunit-name"
                       onClick={this.onStringIdClick}>
-                    <OverlayTrigger placement="top" overlay={assetPathTooltip}>
+                    <OverlayTrigger placement="top" overlay={assetPathWithGitInfoTooltip}>
                         <span className="textunit-assetpath glyphicon glyphicon-info-sign"
                               onClick={this.onGitBlameClicked} />
                     </OverlayTrigger>
