@@ -712,9 +712,11 @@ let TextUnit = React.createClass({
     getGitBlameModal() {
         let ui = "";
         if (this.state.isShowGitBlameModal) {
+
             let textUnitArray = [this.getCloneOfTextUnitFromProps()];
             ui = (
                 <GitBlameInfoModal isShowModal={this.state.isShowGitBlameModal}
+                                   repoIds={SearchParamsStore.getState().repoIds}
                                    repositories={RepositoriesStore.getState().repositories.slice().sort()}
                                    onCloseModal={this.closeModal} textUnitsArray={textUnitArray}/>
             );
