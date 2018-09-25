@@ -251,7 +251,7 @@ class TextUnit {
     }
 
     static toTextUnit(jsonTextUnit) {
-
+        console.log("Make textUnit");
         return new TextUnit(jsonTextUnit);
     }
 }

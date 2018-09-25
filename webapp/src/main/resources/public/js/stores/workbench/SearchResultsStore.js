@@ -196,6 +196,7 @@ class SearchResultsStore {
      * @param {TextUnit} textUnit The textUnit passed back by the SDK
      */
     onSaveTextUnitSuccess(textUnit) {
+        console.log("SearchResultsStore.onSaveTextUnitSuccess");
         this.updateSearchResultsWithTextUnit(textUnit);
     }
 
@@ -208,6 +209,7 @@ class SearchResultsStore {
      * @param {TextUnit} textUnit
      */
     onCheckAndSaveTextUnitSuccess(textUnit) {
+        console.log("onCheckAndSaveTextUnitSuccess");
         this.updateSearchResultsWithTextUnit(textUnit);
     }
 
@@ -215,6 +217,7 @@ class SearchResultsStore {
      * @param {TextUnit} textUnit
      */
     updateSearchResultsWithTextUnit(textUnit) {
+        console.log("SearchResultsStore.updateSearchResultsWithTextUnits");
         for (let index = 0; index < this.searchResults.length; index++) {
             let textUnitInStore = this.searchResults[index];
             if (textUnitInStore.getTextUnitKey() === textUnit.getTextUnitKey()) {

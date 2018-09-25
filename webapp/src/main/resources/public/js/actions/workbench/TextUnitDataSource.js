@@ -6,6 +6,8 @@ import WorkbenchActions from "./WorkbenchActions";
 const TextUnitDataSource = {
     performSaveTextUnit: {
         remote(searchResultsStoreState, textUnit) {
+            console.log("TextUnitDataSource.performSaveTextUnit ");
+
             return TextUnitClient.saveTextUnit(textUnit)
                 .catch(error => {
                     throw new TextUnitError(Error.IDS.TEXTUNIT_SAVE_FAILED, textUnit);
@@ -15,7 +17,10 @@ const TextUnitDataSource = {
         error: WorkbenchActions.saveTextUnitError
     },
     performCheckAndSaveTextUnit: {
+
         remote(searchResultsStoreState, textUnit) {
+            console.log("TextUnitDataSource.performCheckAndSaveTextUnit ");
+
             return TextUnitClient.checkTextUnitIntegrity(textUnit)
                 .then(checkResult => {
                     if (checkResult && !checkResult.checkResult) {
@@ -33,6 +38,8 @@ const TextUnitDataSource = {
     },
     deleteTextUnit: {
         remote(searchResultsStoreState, textUnit) {
+            console.log("TextUnitDataSource.deleteTextUnit ");
+
             return TextUnitClient.deleteCurrentTranslation(textUnit)
                 .catch(error => {
                     throw new TextUnitError(Error.IDS.TEXTUNIT_DELETE_FAILED, textUnit);
@@ -44,6 +51,8 @@ const TextUnitDataSource = {
 
     saveVirtualAssetTextUnit: {
         remote(searchResultsStoreState, textUnit) {
+            console.log("TextUnitDataSource.saveVirtualAssetTextUnit ");
+
             return TextUnitClient.saveVirtualAssetTextUnit(textUnit)
                 .catch(error => {
                     throw new TextUnitError(Error.IDS.VIRTUAL_ASSET_TEXTUNIT_SAVE_FAILED, textUnit);
@@ -51,6 +60,17 @@ const TextUnitDataSource = {
         },
         success: WorkbenchActions.saveVirtualAssetTextUnitSuccess,
         error: WorkbenchActions.saveVirtualAssetTextUnitError
+    },
+
+    getInfo: {
+        remote(textUnit) {
+            console.log("TextUnitDataSource.getInfo ");
+
+            return TextUnitClient.getInfo(textUnit);
+
+        },
+        success: WorkbenchActions.getInfoSuccess,
+        error: WorkbenchActions.getInfoError
     }
 };
 

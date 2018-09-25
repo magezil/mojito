@@ -12,10 +12,11 @@ class TextUnitClient extends BaseClient {
      *
      * @param {TextUnitSearcherParameters} textUnitSearcherParameters
      *
-     * @returns {Promise.<TextUnit[]|err>} a promise that retuns an array of text units
+     * @returns {Promise.<TextUnit[]|err>} a promise that returns an array of text units
      */
     getTextUnits(textUnitSearcherParameters) {
 
+        console.log("getTextUnits");
         let promise = this.get(this.getUrl(), textUnitSearcherParameters.getParams());
 
         return promise.then(function (result) {
@@ -44,7 +45,11 @@ class TextUnitClient extends BaseClient {
      * @returns {Promise<TextUnit, err>} a promise that returns the updated or created text unit
      */
     saveTextUnit(textUnit) {
+        console.log("TextUnitClient.saveTextUnit");
+        console.log(this.getUrl() + textUnit.data);
         return this.post(this.getUrl(), textUnit.data).then(function (jsonTextUnit) {
+            console.log("TextUnitClient.saveTextUnit after then");
+
             return TextUnit.toTextUnit(jsonTextUnit);
         });
     }
@@ -72,6 +77,7 @@ class TextUnitClient extends BaseClient {
      * @returns
      */
     saveVirtualAssetTextUnit(textUnit) {
+        console.log("saveVirtualAssetTextUnit");
         return this.post(this.getAssetTextUnitsUrl(textUnit.getAssetId()), [{
             name: textUnit.getName(),
             content: textUnit.getSource(),
@@ -98,6 +104,10 @@ class TextUnitClient extends BaseClient {
     getEntityName() {
         return 'textunits';
     }
+    //
+    // getInfo() {
+    //     return this.get(this.getUrl() + '/gitBlameWithUsages');
+    // }
 }
 ;
 

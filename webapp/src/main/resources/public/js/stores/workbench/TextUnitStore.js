@@ -19,6 +19,8 @@ class TextUnitStore {
      * @param {TextUnit} textUnit The SDK TextUnit object returned by the server after saving it.
      */
     onSaveTextUnit(textUnit) {
+        console.log("TextUnitStore.onSaveTextUnit");
+
         this.getInstance().performSaveTextUnit(textUnit);
     }
 
@@ -27,7 +29,7 @@ class TextUnitStore {
      * @param {TextUnit} textUnit The textUnit passed back by the SDK
      */
     onSaveTextUnitSuccess(textUnit) {
-        console.log("onSaveTextUnitSuccess");
+        console.log("TextUnitStore.onSaveTextUnitSuccess");
         this.resetErrorState(textUnit);
     }
 
