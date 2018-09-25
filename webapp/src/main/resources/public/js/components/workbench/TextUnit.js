@@ -863,7 +863,7 @@ let TextUnit = React.createClass({
     },
 
     renderGitBlameInfo() {
-        let assetPathWithGitInfo = this.addZeroWidthSpace("Click me"); // to make the tooltip text to wrap
+        let assetPathWithGitInfo = this.addZeroWidthSpace("Code author"); // to make the tooltip text to wrap
         let assetPathWithGitInfoTooltip = <Tooltip id="{this.props.textUnit.getId()}-gitInfo">{assetPathWithGitInfo}</Tooltip>;
 
         return (<span className="clickable textunit-name"
