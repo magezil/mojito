@@ -167,6 +167,7 @@ a.label-container:hover {
 /** MODAL */
 .modal-content {
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+    word-wrap: break-word;
 }
 
 /** emphasis */
@@ -421,6 +422,15 @@ div.textunit label {
 }
 
 .textunit-name .textunit-assetpath {
+    visibility: hidden;
+    color: $brand-success;
+}
+
+.textunit-name:hover .textunit-gitInfo {
+    visibility: visible;
+}
+
+.textunit-name .textunit-gitInfo {
     visibility: hidden;
     color: $brand-success;
 }
