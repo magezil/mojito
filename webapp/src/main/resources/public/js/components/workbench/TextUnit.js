@@ -85,9 +85,6 @@ let TextUnit = React.createClass({
             "isShowModal": false,
 
             /** @type {Boolean} */
-            "isShowGitBlameModal" : false,
-
-            /** @type {Boolean} */
             "isErrorAlertShown": false,
 
             /** @type {Boolean} */

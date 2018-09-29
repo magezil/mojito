@@ -1,7 +1,7 @@
 import PropTypes from 'prop-types';
 import React from "react";
 import {FormattedMessage, injectIntl} from "react-intl";
-import {Button, ButtonGroup, ButtonToolbar, FormControl, Modal} from "react-bootstrap";
+import {Button, ButtonGroup, ButtonToolbar, FormControl, InputGroup, Modal} from "react-bootstrap";
 
 let GitBlameInfoModal = React.createClass({
 
@@ -21,16 +21,52 @@ let GitBlameInfoModal = React.createClass({
         };
     },
 
-    getRepositoryName() {
-        if (this.props.textUnit === null)
+    getTitle() {
+        if (this.props.textUnit == null)
             return "";
-        return "Repository: " + this.props.textUnit.getRepositoryName()
+        return this.props.textUnit.getName();
     },
 
-    getGitBlameInfo(property, string) {
-        if (this.props.gitBlameWithUsage == null || this.props.gitBlameWithUsage["gitBlame"] == null)
+    displayInfo(title, data) {
+        if (data == null)
+            return (
+                <tr className={"git-blame-table"}>
+                    <td className={"git-blame-label git-blame-unused"}><label>{title}</label></td>
+                    <td className={"git-blame-unused"}>---</td>
+                </tr>
+            );
+        return (
+            <tr className={"git-blame-table"}>
+                <td className={"git-blame-label"}><label>{title}</label></td>
+                <td className={"git-blame-info"}>{data}</td>
+            </tr>
+        );
+    },
+
+    getTextUnitInfo() {
+        if (this.props.textUnit === null)
             return "";
-        return string + ": " + this.props.gitBlameWithUsage["gitBlame"][property];
+        let textUnitFields = {"TmTextUnitId": this.props.textUnit.getTmTextUnitId(),
+            "Repository": this.props.textUnit.getRepositoryName(),
+            "AssetPath": this.props.textUnit.getAssetPath(),
+            "Source": this.props.textUnit.getSource(),
+            "Locale": this.props.textUnit.getTargetLocale(),
+            "Comment": this.props.textUnit.getComment()};
+
+        let textUnitInfo = [];
+
+        for (let key in textUnitFields) {
+            textUnitInfo.push(this.displayInfo(key, textUnitFields[key]));
+        }
+
+        console.log(this.props.textUnit);
+        return (textUnitInfo);
+    },
+
+    getGitBlameInfo(property, title) {
+        if (this.props.gitBlameWithUsage == null || this.props.gitBlameWithUsage["gitBlame"] == null)
+            return this.displayInfo(title, null);
+        return this.displayInfo(title, this.props.gitBlameWithUsage["gitBlame"][property]);
     },
 
     getAuthorName() {
@@ -51,10 +87,27 @@ let GitBlameInfoModal = React.createClass({
 
     getUsages() {
         if (this.props.gitBlameWithUsage == null || this.props.gitBlameWithUsage["usages"] == null)
+            return this.displayInfo("Location", null);
+        return this.displayInfo("Location", this.props.gitBlameWithUsage["usages"].join(", "));
+    },
+
+    getOpenGrokLocation() {
+        let textUnit = this.props.textUnit;
+        if (textUnit == null || this.props.gitBlameWithUsage == null)
             return "";
-        if (this.props.gitBlameWithUsage["usages"].length === 0)
-            return "";
-        return "Location: " + this.props.gitBlameWithUsage["usages"].join(", ");
+        let links = [];
+        let repo = textUnit.getRepositoryName();
+        for (let usage of this.props.gitBlameWithUsage["usages"]) {
+            let link = "opengrok.pinadmin.com/xref/";
+            if (repo === "pinboard")
+                link += "Pinboard/";
+            link += usage;
+            link = link.replace(":", "#");
+            link = "https://" + link;
+            links.push(<tr><td></td><td className={"link-location"}><a href={link}>{link}</a></td></tr>);
+        }
+
+        return links;
     },
 
     /**
@@ -68,15 +121,27 @@ let GitBlameInfoModal = React.createClass({
         return (
             <Modal show={this.props.show} onHide={this.closeModal}>
                 <Modal.Header closeButton>
-                    <Modal.Title><FormattedMessage id="textUnit.gitBlame.title"/></Modal.Title>
+                    <Modal.Title>{this.getTitle()}</Modal.Title>
                 </Modal.Header>
                 <Modal.Body>
-                    <div>{this.getRepositoryName()} </div>
-                    <div>{this.getAuthorName()}</div>
-                    <div>{this.getAuthorEmail()}</div>
-                    <div>{this.getCommitName()}</div>
-                    <div>{this.getCommitTime()}</div>
-                    <div>{this.getUsages()} </div>
+                    <table>
+                        <tbody>
+
+                        {this.getTextUnitInfo()}
+                        <tr>
+                            <td colSpan={"2"}>
+                                <label>Git blame information</label>
+                                {this.props.loading ? (<span className="glyphicon glyphicon-refresh spinning" />) : ""}
+                            </td>
+                        </tr>
+                            {this.getAuthorName()}
+                            {this.getAuthorEmail()}
+                            {this.getCommitName()}
+                            {this.getCommitTime()}
+                            {this.getUsages()}
+                            {this.getOpenGrokLocation()}
+                        </tbody>
+                    </table>
                 </Modal.Body>
                 <Modal.Footer>
                     <Button bsStyle="primary" onClick={this.closeModal}>
