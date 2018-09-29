@@ -133,13 +133,13 @@ let GitBlameInfoModal = React.createClass({
                     <Modal.Title>{this.getTitle()}</Modal.Title>
                 </Modal.Header>
                 <Modal.Body>
-                    <div className={"row git-blame-info"}>
+                    <div className={"row"}>
                         <div className={"col-sm-4 git-blame-label"}><h4>Text unit information</h4></div>
                     </div>
                     <div>
                         {this.renderTextUnitInfo()}
                         <hr />
-                    <div className={"row git-blame-info"}>
+                    <div className={"row"}>
                         <div className={"col-sm-4 git-blame-label"}><h4>Git blame information</h4></div>
                         <div className={"col-sm-8 git-blame-info"}>{this.props.loading ? (<span className="glyphicon glyphicon-refresh spinning" />) : ""}</div>
                     </div>
