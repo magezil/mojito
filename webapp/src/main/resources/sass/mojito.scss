@@ -462,19 +462,15 @@ div.targetstring-container textarea {
 }
 
 .git-blame-label {
-    width: 200px;
     text-align: right;
-    padding: 0 $large-spacer;
-    font-weight: $brand-font-weight;
 }
 
-tr.git-blame-table:nth-child(even) {
+.git-blame:nth-of-type(even) {
     background-color: #dddddd;
 }
 
 .git-blame-info {
     word-wrap: break-word;
-    width: 100%;
 }
 
 .link-location {

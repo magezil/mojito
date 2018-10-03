@@ -27,84 +27,93 @@ let GitBlameInfoModal = React.createClass({
         return this.props.textUnit.getName();
     },
 
-    displayInfo(title, data) {
-        if (data == null)
-            return (
-                <tr className={"git-blame-table"}>
-                    <td className={"git-blame-label git-blame-unused"}><label>{title}</label></td>
-                    <td className={"git-blame-unused"}>---</td>
-                </tr>
-            );
+    displayInfo(label, data) {
+
+        let gitBlameClass = "";
+        if (data == null) {
+            gitBlameClass = " git-blame-unused";
+            data = "---";
+        }
+
         return (
-            <tr className={"git-blame-table"}>
-                <td className={"git-blame-label"}><label>{title}</label></td>
-                <td className={"git-blame-info"}>{data}</td>
-            </tr>
+            <div className={"row git-blame"}>
+                <label className={"col-sm-3 git-blame-label" + gitBlameClass}>{label}</label>
+                <div className={"col-sm-9 git-blame-info" + gitBlameClass}>{data}</div>
+            </div>
         );
     },
 
-    getTextUnitInfo() {
+    renderTextUnitInfo() {
         if (this.props.textUnit === null)
             return "";
-        let textUnitFields = {"TmTextUnitId": this.props.textUnit.getTmTextUnitId(),
-            "Repository": this.props.textUnit.getRepositoryName(),
-            "AssetPath": this.props.textUnit.getAssetPath(),
-            "Source": this.props.textUnit.getSource(),
-            "Locale": this.props.textUnit.getTargetLocale(),
-            "Comment": this.props.textUnit.getComment()};
-
-        let textUnitInfo = [];
-
-        for (let key in textUnitFields) {
-            textUnitInfo.push(this.displayInfo(key, textUnitFields[key]));
-        }
 
         console.log(this.props.textUnit);
-        return (textUnitInfo);
+        return (
+            <div>
+                {this.displayInfo("TmTextUnitId", this.props.textUnit.getTmTextUnitId())}
+                {this.displayInfo("Repository", this.props.textUnit.getRepositoryName())}
+                {this.displayInfo("AssetPath", this.props.textUnit.getAssetPath())}
+                {this.displayInfo("Source", this.props.textUnit.getSource())}
+                {this.displayInfo("Locale", this.props.textUnit.getTargetLocale())}
+                {this.displayInfo("Comment", this.props.textUnit.getComment())}
+            </div>);
     },
 
-    getGitBlameInfo(property, title) {
+    renderGitBlameInfo() {
+        return (
+            <div>
+                {this.displayInfo("Author", this.getAuthorName())}
+                {this.displayInfo("Email", this.getAuthorEmail())}
+                {this.displayInfo("Commit", this.getCommitName())}
+                {this.displayInfo("Commit date", this.getCommitTime())}
+                {this.displayInfo("Location", this.getOpenGrokLocation())}
+            </div>
+        )
+    },
+
+    getGitBlameProperty(property) {
         if (this.props.gitBlameWithUsage == null || this.props.gitBlameWithUsage["gitBlame"] == null)
-            return this.displayInfo(title, null);
-        return this.displayInfo(title, this.props.gitBlameWithUsage["gitBlame"][property]);
+            return null;
+        return this.props.gitBlameWithUsage["gitBlame"][property];
     },
 
     getAuthorName() {
-        return this.getGitBlameInfo("authorName", "Author");
+        return this.getGitBlameProperty("authorName");
     },
 
     getAuthorEmail() {
-        return this.getGitBlameInfo("authorEmail", "Email");
+        return this.getGitBlameProperty("authorEmail");
     },
 
     getCommitName() {
-        return this.getGitBlameInfo("commitName", "Commit");
+        return this.getGitBlameProperty("commitName");
     },
 
     getCommitTime() {
-        return this.getGitBlameInfo("commitTime", "Commit date");
+        return this.getGitBlameProperty("commitTime");
     },
 
     getUsages() {
         if (this.props.gitBlameWithUsage == null || this.props.gitBlameWithUsage["usages"] == null)
-            return this.displayInfo("Location", null);
-        return this.displayInfo("Location", this.props.gitBlameWithUsage["usages"].join(", "));
+            return null;
+        return this.props.gitBlameWithUsage["usages"];
     },
 
     getOpenGrokLocation() {
         let textUnit = this.props.textUnit;
-        if (textUnit == null || this.props.gitBlameWithUsage == null)
-            return "";
+        let usages = this.getUsages();
+        if (textUnit == null || usages == null || usages.length === 0)
+            return null;
         let links = [];
         let repo = textUnit.getRepositoryName();
-        for (let usage of this.props.gitBlameWithUsage["usages"]) {
+        for (let usage of usages) {
             let link = "opengrok.pinadmin.com/xref/";
             if (repo === "pinboard")
                 link += "Pinboard/";
             link += usage;
             link = link.replace(":", "#");
             link = "https://" + link;
-            links.push(<tr><td></td><td className={"link-location"}><a href={link}>{link}</a></td></tr>);
+            links.push(<div><a href={link}>{usage}</a></div>);
         }
 
         return links;
@@ -124,24 +133,19 @@ let GitBlameInfoModal = React.createClass({
                     <Modal.Title>{this.getTitle()}</Modal.Title>
                 </Modal.Header>
                 <Modal.Body>
-                    <table>
-                        <tbody>
+                    <div className={"row git-blame-info"}>
+                        <div className={"col-sm-4 git-blame-label"}><h4>Text unit information</h4></div>
+                    </div>
+                    <div>
+                        {this.renderTextUnitInfo()}
+                        <hr />
+                    <div className={"row git-blame-info"}>
+                        <div className={"col-sm-4 git-blame-label"}><h4>Git blame information</h4></div>
+                        <div className={"col-sm-8 git-blame-info"}>{this.props.loading ? (<span className="glyphicon glyphicon-refresh spinning" />) : ""}</div>
+                    </div>
+                        {this.renderGitBlameInfo()}
 
-                        {this.getTextUnitInfo()}
-                        <tr>
-                            <td colSpan={"2"}>
-                                <label>Git blame information</label>
-                                {this.props.loading ? (<span className="glyphicon glyphicon-refresh spinning" />) : ""}
-                            </td>
-                        </tr>
-                            {this.getAuthorName()}
-                            {this.getAuthorEmail()}
-                            {this.getCommitName()}
-                            {this.getCommitTime()}
-                            {this.getUsages()}
-                            {this.getOpenGrokLocation()}
-                        </tbody>
-                    </table>
+                    </div>
                 </Modal.Body>
                 <Modal.Footer>
                     <Button bsStyle="primary" onClick={this.closeModal}>

@@ -103,11 +103,15 @@ public class GitBlameCommand extends Command {
              numGitBlameWithUsages = gitBlameWithUsages.size();
              offset += numGitBlameWithUsages;
 
+            consoleWriter.a("Getting git-blame information ").println();
+
             if (fileType instanceof POFileType) {
                 blameWithTextUnitUsages(gitBlameWithUsages);
             } else {
                 blameSourceFiles(gitBlameWithUsages);
             }
+
+            consoleWriter.a("Saving git blame information").println(2);
 
             pollableTasks.add(saveGitInformation(gitBlameWithUsages));
         } while (numGitBlameWithUsages == BATCH_SIZE);
@@ -179,8 +183,13 @@ public class GitBlameCommand extends Command {
                 int line = getLineNumber(usage);
                 if (extractedFilePrefix != null)
                     filename = filename.replace(extractedFilePrefix, "");
+
                 BlameResult blameResultForFile = getBlameResultForFile(filename);
-                getBlameResults(line, blameResultForFile, gitBlameWithUsage);
+                if (blameResultForFile != null)
+                    getBlameResults(line, blameResultForFile, gitBlameWithUsage);
+                else {
+                    consoleWriter.a("Source file:").fg(CYAN).a(filename).reset().a(" not in Git. Skip it.");
+                }
             }
         }
 
