@@ -30,6 +30,7 @@ public class XMLFilter extends net.sf.okapi.filters.xml.XMLFilter {
     static Logger logger = LoggerFactory.getLogger(XMLFilter.class);
 
     public static final String FILTER_CONFIG_ID = "okf_xml@mojito";
+    public static final String MAC_STRINGSDICT_CONFIG_FILE_NAME = "macStringsdict_mojito.fprm";
     public static final String RESX_CONFIG_FILE_NAME = "resx_mojito.fprm";
     public static final String XTB_CONFIG_FILE_NAME = "xtb_mojito.fprm";
 
@@ -39,7 +40,7 @@ public class XMLFilter extends net.sf.okapi.filters.xml.XMLFilter {
     }
 
     /**
-     * Overriding to include only resx, xtb and AndroidStrings filters
+     * Overriding to include only mac stringsdict, resx, xtb and AndroidStrings filters
      *
      * @return
      */
@@ -53,6 +54,13 @@ public class XMLFilter extends net.sf.okapi.filters.xml.XMLFilter {
                 "Configuration for Microsoft RESX documents (without binary data).",
                 RESX_CONFIG_FILE_NAME,
                 ".resx;"));
+        list.add(new FilterConfiguration(getName() + "-stringsdict",
+                getMimeType(),
+                getClass().getName(),
+                "STRINGSDICT",
+                "Configuration for Apple Stringsdict files.",
+                MAC_STRINGSDICT_CONFIG_FILE_NAME,
+                ".stringsdict;"));
         list.add(new FilterConfiguration(getName() + "-xtb",
                 getMimeType(),
                 getClass().getName(),

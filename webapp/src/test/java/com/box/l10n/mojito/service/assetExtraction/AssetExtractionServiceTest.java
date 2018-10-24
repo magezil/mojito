@@ -429,7 +429,7 @@ public class AssetExtractionServiceTest extends ServiceTestBase {
                 + "\"Add to Folder\" = \"Add to Folder\";";
         List<AssetTextUnit> assetTextUnits = getAssetTextUnits(content, "path/to/fake/en.lproj/Localizable.strings");
 
-        assertEquals("Processing should have extracted 1 text units", 1, assetTextUnits.size());
+        assertEquals("Processing should have extracted 1 text unit", 1, assetTextUnits.size());
         assertEquals("Add to Folder", assetTextUnits.get(0).getName());
         assertEquals("Add to Folder", assetTextUnits.get(0).getContent());
         assertEquals(" Title: Title for the add content to folder menu header ", assetTextUnits.get(0).getComment());
@@ -498,7 +498,7 @@ public class AssetExtractionServiceTest extends ServiceTestBase {
                 + "\"Comment\" = \"Comment\";";
         List<AssetTextUnit> assetTextUnits = getAssetTextUnits(content, "path/to/fake/en.lproj/Localizable.strings");
 
-        assertEquals("Processing should have extracted 1 text units", 1, assetTextUnits.size());
+        assertEquals("Processing should have extracted 1 text unit", 1, assetTextUnits.size());
         assertEquals("Comment", assetTextUnits.get(0).getName());
         assertEquals("Comment", assetTextUnits.get(0).getContent());
         assertNull(assetTextUnits.get(0).getComment());
@@ -521,6 +521,45 @@ public class AssetExtractionServiceTest extends ServiceTestBase {
         assertEquals("thisline \\n nextline", assetTextUnits.get(1).getName());
         assertEquals("thisline \n nextline", assetTextUnits.get(1).getContent());
         assertEquals(" Test newline ", assetTextUnits.get(1).getComment());
+    }
+
+    @Test
+    public void testMacStringsdict() throws Exception {
+        String content = "<plist version=\"1.0\">\n" +
+                "<dict>\n" +
+                "<key>%d file(s) remaining</key>\n" +
+                "<dict>\n" +
+                "   <key>NSStringLocalizedFormatKey</key>\n" +
+                "   <string>%#@files@</string>\n" +
+                "   <key>files</key>\n" +
+                "   <dict>\n" +
+                "       <key>NSStringFormatSpecTypeKey</key>\n" +
+                "       <string>NSStringPluralRuleType</string>\n" +
+                "       <key>NSStringFormatValueTypeKey</key>\n" +
+                "       <string>d</string>\n" +
+                "       <key>one</key>\n" +
+                "       <string>%d file remaining</string>\n" +
+                "       <key>other</key>\n" +
+                "       <string>%d files remaining</string>\n" +
+                "   </dict>\n" +
+                "</dict>\n" +
+                "</dict>\n" +
+                "</plist>";
+
+        List<AssetTextUnit> assetTextUnits = getAssetTextUnits(content, "path/to/fake/en.lproj/Localizable.stringsdict");
+
+        assertEquals("Processing should have extracted 3 text units", 3, assetTextUnits.size());
+        assertEquals("%d file(s) remaining_NSStringLocalizedFormatKey", assetTextUnits.get(0).getName());
+        assertEquals("%#@files@", assetTextUnits.get(0).getContent());
+        assertNull(assetTextUnits.get(0).getComment());
+
+        assertEquals("%d file(s) remaining_files_one", assetTextUnits.get(1).getName());
+        assertEquals("%d file remaining", assetTextUnits.get(1).getContent());
+        assertNull(assetTextUnits.get(1).getComment());
+
+        assertEquals("%d file(s) remaining_files_other", assetTextUnits.get(2).getName());
+        assertEquals("%d files remaining", assetTextUnits.get(2).getContent());
+        assertNull(assetTextUnits.get(2).getComment());
     }
 
     @Test

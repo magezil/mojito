@@ -4,6 +4,7 @@ import com.box.l10n.mojito.cli.filefinder.file.AndroidStringsFileType;
 import com.box.l10n.mojito.cli.filefinder.file.CSVFileType;
 import com.box.l10n.mojito.cli.filefinder.file.FileType;
 import com.box.l10n.mojito.cli.filefinder.file.MacStringsFileType;
+import com.box.l10n.mojito.cli.filefinder.file.MacStringsdictFileType;
 import com.box.l10n.mojito.cli.filefinder.file.POFileType;
 import com.box.l10n.mojito.cli.filefinder.file.PropertiesFileType;
 import com.box.l10n.mojito.cli.filefinder.file.ReswFileType;
@@ -72,6 +73,7 @@ public class FileFinder {
         fileTypes.add(new PropertiesFileType());
         fileTypes.add(new AndroidStringsFileType());
         fileTypes.add(new MacStringsFileType());
+        fileTypes.add(new MacStringsdictFileType());
         fileTypes.add(new ReswFileType());
         fileTypes.add(new ResxFileType());
         fileTypes.add(new POFileType());
