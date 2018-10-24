@@ -75,7 +75,6 @@ public class ImportLocalizedAssetCommandTest extends CLITestBase {
         checkExpectedGeneratedResources();
     }
 
-    // todo: finish this test
     @Test
     public void importMacStringsdict() throws Exception {
 
