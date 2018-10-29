@@ -527,6 +527,7 @@ public class AssetExtractionServiceTest extends ServiceTestBase {
     public void testMacStringsdict() throws Exception {
         String content = "<plist version=\"1.0\">\n" +
                 "<dict>\n" +
+                "<!-- Comment -->\n" +
                 "<key>%d file(s) remaining</key>\n" +
                 "<dict>\n" +
                 "   <key>NSStringLocalizedFormatKey</key>\n" +
@@ -546,21 +547,26 @@ public class AssetExtractionServiceTest extends ServiceTestBase {
                 "</dict>\n" +
                 "</plist>";
 
-        // TODO: LOL fix this. it broke...
         List<AssetTextUnit> assetTextUnits = getAssetTextUnits(content, "path/to/fake/en.lproj/Localizable.stringsdict");
 
-        assertEquals("Processing should have extracted 3 text units", 3, assetTextUnits.size());
-        assertEquals("%d file(s) remaining_NSStringLocalizedFormatKey", assetTextUnits.get(0).getName());
-        assertEquals("%#@files@", assetTextUnits.get(0).getContent());
-        assertNull(assetTextUnits.get(0).getComment());
-
+        assertEquals("Processing should have extracted 6 text units", 6, assetTextUnits.size());
+        assertEquals("%d file(s) remaining_files_zero", assetTextUnits.get(0).getName());
         assertEquals("%d file(s) remaining_files_one", assetTextUnits.get(1).getName());
-        assertEquals("%d file remaining", assetTextUnits.get(1).getContent());
-        assertNull(assetTextUnits.get(1).getComment());
+        assertEquals("%d file(s) remaining_files_two", assetTextUnits.get(2).getName());
+        assertEquals("%d file(s) remaining_files_few", assetTextUnits.get(3).getName());
+        assertEquals("%d file(s) remaining_files_many", assetTextUnits.get(4).getName());
+        assertEquals("%d file(s) remaining_files_other", assetTextUnits.get(5).getName());
 
-        assertEquals("%d file(s) remaining_files_other", assetTextUnits.get(2).getName());
-        assertEquals("%d files remaining", assetTextUnits.get(2).getContent());
-        assertNull(assetTextUnits.get(2).getComment());
+
+        for (int i = 0; i < assetTextUnits.size(); i++) {
+            if (i == 1) {
+                assertEquals("%d file remaining", assetTextUnits.get(i).getContent());
+            }
+            else {
+                assertEquals("%d files remaining", assetTextUnits.get(i).getContent());
+            }
+            assertEquals("Comment", assetTextUnits.get(i).getComment());
+        }
     }
 
     @Test
