@@ -12,6 +12,7 @@ import net.sf.okapi.common.skeleton.GenericSkeletonPart;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Configurable;
 import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
 
@@ -19,17 +20,15 @@ import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
  *
- * @author jyi
+ * @author emagalindan
  */
+@Configurable
 public class MacStringsdictFilter extends XMLFilter {
 
     /**
@@ -40,10 +39,14 @@ public class MacStringsdictFilter extends XMLFilter {
     public static final String FILTER_CONFIG_ID = "okf_xml@mojito";
     public static final String MAC_STRINGSDICT_CONFIG_FILE_NAME = "macStringsdict_mojito.fprm";
 
-    @Override
-    public String getName() {
-        return FILTER_CONFIG_ID;
-    }
+    // Match single or multiple comments
+    private static final String XML_COMMENT_PATTERN = "<!--(?<comment>.*?)-->";
+    private static final String XML_COMMENT_GROUP_NAME = "comment";
+
+    // TODO: add usages to textunit
+
+    // Match variable name
+    static final String VARIABLE_NAME_PATTERN = "%#@.*@";
 
     LocaleId targetLocale;
     List<Event> eventQueue = new ArrayList<>();
@@ -52,6 +55,13 @@ public class MacStringsdictFilter extends XMLFilter {
     TextUnitUtils textUnitUtils;
 
     boolean hasAnnotation;
+
+    String comment;
+
+    @Override
+    public String getName() {
+        return FILTER_CONFIG_ID;
+    }
 
     /**
      * Overriding to include only mac stringsdict, resx, xtb and AndroidStrings filters
@@ -102,9 +112,20 @@ public class MacStringsdictFilter extends XMLFilter {
 
         if (next.isTextUnit() && isPluralGroupStarting(next.getResource())) {
             readPlurals(next);
-        } else {
+        } else if (next.isTextUnit() && (isCommentTextUnit(next.getResource()) || isValueTextUnit(next.getResource()))) {
+            eventQueue.add(new Event(EventType.NO_OP));
+        } else  {
             eventQueue.add(next);
         }
+    }
+
+    protected boolean isCommentTextUnit(IResource resource) {
+        return resource.toString().trim().startsWith("<!--");
+    }
+
+    protected boolean isValueTextUnit(IResource resource) {
+        // TODO: add support for processing the variable name. This event with the variable name is dropped for now.
+        return resource.toString().trim().matches(VARIABLE_NAME_PATTERN);
     }
 
     private String unescape(String text) {
@@ -117,47 +138,30 @@ public class MacStringsdictFilter extends XMLFilter {
         return unescapedText;
     }
 
-    /**
-     * Extract the note from XML comments only if there is no note on the text
-     * unit. In other words if a note was specify via attribute like description
-     * for android it won't be overridden by an comments present in the XML
-     * file.
-     *
-     * @param textUnit the text unit from which comments should be extracted
-     */
-    protected void extractNoteFromXMLCommentInSkeletonIfNone(TextUnit textUnit) {
-
-        String skeleton = textUnit.getSkeleton().toString();
-
-        if (textUnit.getProperty(Property.NOTE) == null) {
-            String note = getNoteFromXMLCommentsInSkeleton(skeleton);
-            if (note != null) {
-                textUnit.setProperty(new Property(Property.NOTE, note));
+    private void processTextUnit(Event event) {
+        if (event != null && event.isTextUnit()) {
+            TextUnit textUnit = (TextUnit) event.getTextUnit();
+            String sourceString = textUnit.getSource().toString();
+            // if source has escaped double-quotes, single-quotes, \r or \n, unescape
+            TextContainer source = new TextContainer(unescape(sourceString));
+            textUnit.setSource(source);
+            if (comment == null) {
+                getNoteFromEvents(textUnit);
             }
+            textUnit.setProperty(new Property(Property.NOTE, comment));
         }
     }
 
-    // Match single or multi-line comments
-    private static final String XML_COMMENT_PATTERN = "<!--(?<comment>(.*?\\s)*?)-->";
-    private static final String XML_COMMENT_GROUP_NAME = "comment";
-    // Match single or multiple location (additional locations on next line)
-    static final String USAGE_LOCATION_PATTERN = "Location: (?<location>(.*?\\s)*?)-->";
-    static final String USAGE_LOCATION_GROUP_NAME = "location";
 
-    /**
-     * Gets the note from the XML comments in the skeleton.
-     *
-     * @param skeleton that may contains comments
-     * @return the note or <code>null</code>
-     */
-    protected String getNoteFromXMLCommentsInSkeleton(String skeleton) {
+    protected void getNoteFromEvents(TextUnit textUnit) {
 
         String note = null;
+        String text = textUnit.toString();
 
         StringBuilder commentBuilder = new StringBuilder();
 
         Pattern pattern = Pattern.compile(XML_COMMENT_PATTERN);
-        Matcher matcher = pattern.matcher(skeleton);
+        Matcher matcher = pattern.matcher(text);
 
         while (matcher.find()) {
             if (commentBuilder.length() > 0) {
@@ -169,45 +173,9 @@ public class MacStringsdictFilter extends XMLFilter {
         if (commentBuilder.length() > 0) {
             note = commentBuilder.toString();
         }
-
-        return note;
-    }
-
-    private void processTextUnit(Event event) {
-        if (event != null && event.isTextUnit()) {
-            TextUnit textUnit = (TextUnit) event.getTextUnit();
-            String sourceString = textUnit.getSource().toString();
-            // if source has escaped double-quotes, single-quotes, \r or \n, unescape
-            TextContainer source = new TextContainer(unescape(sourceString));
-            textUnit.setSource(source);
-            extractNoteFromXMLCommentInSkeletonIfNone(textUnit);
-            addUsagesToTextUnit(textUnit);
+        if (note != null) {
+            comment = note;
         }
-    }
-
-    private void setUsagesAnnotationOnTextUnit(Set<String> usagesFromSkeleton, ITextUnit textUnit) {
-        textUnit.setAnnotation(new UsagesAnnotation((usagesFromSkeleton)));
-    }
-
-    void addUsagesToTextUnit(TextUnit textUnit) {
-        Set<String> usageLocationsFromSkeleton = getUsagesFromSkeleton(textUnit.getSkeleton().toString());
-        setUsagesAnnotationOnTextUnit(usageLocationsFromSkeleton, textUnit);
-    }
-
-    Set<String> getUsagesFromSkeleton(String skeleton) {
-        Set<String> usages = new LinkedHashSet<>();
-
-        Pattern pattern = Pattern.compile(USAGE_LOCATION_PATTERN);
-        Matcher matcher = pattern.matcher(skeleton);
-
-        if (matcher.find()) {
-            String[] locations = matcher.group(USAGE_LOCATION_GROUP_NAME).split("\n");
-            for (int i = 0; i < locations.length; i++) {
-                // There should be no whitespace characters in usages, so remove them
-                usages.add(locations[i].trim());
-            }
-        }
-        return usages;
     }
 
     private Event getNextWithProcess() {
@@ -231,6 +199,7 @@ public class MacStringsdictFilter extends XMLFilter {
 
         eventQueue.addAll(pluralEvents);
 
+
         if (isPluralGroupStarting(next.getResource())) {
             readPlurals(next);
         } else {
@@ -241,13 +210,10 @@ public class MacStringsdictFilter extends XMLFilter {
     // finds start of plural group
     protected boolean isPluralGroupStarting(IResource resource) {
         String toString = resource.getSkeleton().toString();
-        Pattern p = Pattern.compile("<key>NSStringFormatSpecTypeKey</key>\n" +
-                "<string>NSStringPluralRuleType</string>\n" +
-                "<key>NSStringFormatValueTypeKey</key>\n" +
-                "<string>d</string>");
+        Pattern p = Pattern.compile("<key>NSStringFormatValueTypeKey</key>\n");
         Matcher matcher = p.matcher(toString);
-        boolean startPlural = matcher.find();
-        return startPlural;
+        boolean found = matcher.find();
+        return found;
     }
 
 
@@ -256,8 +222,7 @@ public class MacStringsdictFilter extends XMLFilter {
         String toString = resource.getSkeleton().toString();
         Pattern p = Pattern.compile("</dict>");
         Matcher matcher = p.matcher(toString);
-        boolean endPlural = matcher.find();
-        return endPlural;
+        return matcher.find();
     }
 
     protected List<Event> adaptPlurals(List<Event> pluralEvents) {
@@ -271,7 +236,6 @@ public class MacStringsdictFilter extends XMLFilter {
 
     class MacStringsdictPluralsHolder extends PluralsHolder {
         String firstForm = null;
-        String comments = null;
 
         @Override
         protected void loadEvents(List<Event> pluralEvents) {
@@ -279,8 +243,7 @@ public class MacStringsdictFilter extends XMLFilter {
             if (!pluralEvents.isEmpty()) {
                 Event firstEvent = pluralEvents.get(0);
                 firstForm = getPluralFormFromSkeleton(firstEvent.getResource());
-                ITextUnit firstTextUnit = firstEvent.getTextUnit();
-                comments = textUnitUtils.getNote(firstTextUnit);
+
             }
 
             super.loadEvents(pluralEvents);
@@ -288,7 +251,7 @@ public class MacStringsdictFilter extends XMLFilter {
 
         String getPluralFormFromSkeleton(IResource resource) {
             String toString = resource.getSkeleton().toString();
-            Pattern p = Pattern.compile("<key>");
+            Pattern p = Pattern.compile("<key>(.+?)</key>");
             Matcher matcher = p.matcher(toString);
             String res = null;
             if (matcher.find()) {
@@ -313,7 +276,7 @@ public class MacStringsdictFilter extends XMLFilter {
             GenericSkeleton genericSkeleton = (GenericSkeleton) textUnit.getSkeleton();
             for (GenericSkeletonPart genericSkeletonPart : genericSkeleton.getParts()) {
                 String partString = genericSkeletonPart.toString();
-                Pattern p = Pattern.compile("<key>quantity.+?</key>");
+                Pattern p = Pattern.compile("<key>.+?</key>");
                 Matcher matcher = p.matcher(partString);
                 if (matcher.find()) {
                     String match = matcher.group(1);
