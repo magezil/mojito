@@ -546,6 +546,7 @@ public class AssetExtractionServiceTest extends ServiceTestBase {
                 "</dict>\n" +
                 "</plist>";
 
+        // TODO: LOL fix this. it broke...
         List<AssetTextUnit> assetTextUnits = getAssetTextUnits(content, "path/to/fake/en.lproj/Localizable.stringsdict");
 
         assertEquals("Processing should have extracted 3 text units", 3, assetTextUnits.size());
