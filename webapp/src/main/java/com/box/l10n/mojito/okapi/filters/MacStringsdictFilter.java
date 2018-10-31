@@ -1,5 +1,7 @@
 package com.box.l10n.mojito.okapi.filters;
 
+import com.box.l10n.mojito.okapi.CopyFormsOnImport;
+import com.box.l10n.mojito.okapi.TextUnitUtils;
 import net.sf.okapi.common.*;
 import net.sf.okapi.common.encoder.EncoderManager;
 import net.sf.okapi.common.exceptions.OkapiIOException;
@@ -9,6 +11,7 @@ import net.sf.okapi.common.skeleton.GenericSkeleton;
 import net.sf.okapi.common.skeleton.GenericSkeletonPart;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
 
@@ -45,6 +48,10 @@ public class MacStringsdictFilter extends XMLFilter {
     LocaleId targetLocale;
     List<Event> eventQueue = new ArrayList<>();
 
+    @Autowired
+    TextUnitUtils textUnitUtils;
+
+    boolean hasAnnotation;
 
     /**
      * Overriding to include only mac stringsdict, resx, xtb and AndroidStrings filters
@@ -65,6 +72,11 @@ public class MacStringsdictFilter extends XMLFilter {
     }
 
     @Override
+    public boolean hasNext() {
+        return !eventQueue.isEmpty() || super.hasNext();
+    }
+
+    @Override
     public Event next() {
         Event event;
 
@@ -82,6 +94,7 @@ public class MacStringsdictFilter extends XMLFilter {
         super.open(input);
         targetLocale = input.getTargetLocale();
         logger.debug("target locale: ", targetLocale);
+        hasAnnotation = input.getAnnotation(CopyFormsOnImport.class) != null;
     }
 
     private void readNextEvents() {
@@ -95,8 +108,11 @@ public class MacStringsdictFilter extends XMLFilter {
     }
 
     private String unescape(String text) {
+        // unescape double or single quotes
         String unescapedText = text.replaceAll("(\\\\)(\"|')", "$2");
+        // unescape \n
         unescapedText = unescapedText.replaceAll("\\\\n", "\n");
+        // unescape \r
         unescapedText = unescapedText.replaceAll("\\\\r", "\r");
         return unescapedText;
     }
@@ -121,10 +137,12 @@ public class MacStringsdictFilter extends XMLFilter {
         }
     }
 
+    // Match single or multi-line comments
     private static final String XML_COMMENT_PATTERN = "<!--(?<comment>(.*?\\s)*?)-->";
     private static final String XML_COMMENT_GROUP_NAME = "comment";
-    static final String USAGE_LOCATION_GROUP_NAME = "location";
+    // Match single or multiple location (additional locations on next line)
     static final String USAGE_LOCATION_PATTERN = "Location: (?<location>(.*?\\s)*?)-->";
+    static final String USAGE_LOCATION_GROUP_NAME = "location";
 
     /**
      * Gets the note from the XML comments in the skeleton.
@@ -160,11 +178,36 @@ public class MacStringsdictFilter extends XMLFilter {
             TextUnit textUnit = (TextUnit) event.getTextUnit();
             String sourceString = textUnit.getSource().toString();
             // if source has escaped double-quotes, single-quotes, \r or \n, unescape
-//            String unescapedSourceString = unescape(sourceString);
             TextContainer source = new TextContainer(unescape(sourceString));
             textUnit.setSource(source);
             extractNoteFromXMLCommentInSkeletonIfNone(textUnit);
+            addUsagesToTextUnit(textUnit);
         }
+    }
+
+    private void setUsagesAnnotationOnTextUnit(Set<String> usagesFromSkeleton, ITextUnit textUnit) {
+        textUnit.setAnnotation(new UsagesAnnotation((usagesFromSkeleton)));
+    }
+
+    void addUsagesToTextUnit(TextUnit textUnit) {
+        Set<String> usageLocationsFromSkeleton = getUsagesFromSkeleton(textUnit.getSkeleton().toString());
+        setUsagesAnnotationOnTextUnit(usageLocationsFromSkeleton, textUnit);
+    }
+
+    Set<String> getUsagesFromSkeleton(String skeleton) {
+        Set<String> usages = new LinkedHashSet<>();
+
+        Pattern pattern = Pattern.compile(USAGE_LOCATION_PATTERN);
+        Matcher matcher = pattern.matcher(skeleton);
+
+        if (matcher.find()) {
+            String[] locations = matcher.group(USAGE_LOCATION_GROUP_NAME).split("\n");
+            for (int i = 0; i < locations.length; i++) {
+                // There should be no whitespace characters in usages, so remove them
+                usages.add(locations[i].trim());
+            }
+        }
+        return usages;
     }
 
     private Event getNextWithProcess() {
@@ -195,14 +238,20 @@ public class MacStringsdictFilter extends XMLFilter {
         }
     }
 
+    // finds start of plural group
     protected boolean isPluralGroupStarting(IResource resource) {
         String toString = resource.getSkeleton().toString();
-        Pattern p = Pattern.compile("<dict>");
+        Pattern p = Pattern.compile("<key>NSStringFormatSpecTypeKey</key>\n" +
+                "<string>NSStringPluralRuleType</string>\n" +
+                "<key>NSStringFormatValueTypeKey</key>\n" +
+                "<string>d</string>");
         Matcher matcher = p.matcher(toString);
         boolean startPlural = matcher.find();
         return startPlural;
     }
 
+
+    //finds end of plural group
     protected boolean isPluralGroupEnding(IResource resource) {
         String toString = resource.getSkeleton().toString();
         Pattern p = Pattern.compile("</dict>");
@@ -214,75 +263,79 @@ public class MacStringsdictFilter extends XMLFilter {
     protected List<Event> adaptPlurals(List<Event> pluralEvents) {
         logger.debug("Adapt plural forms if needed");
         PluralsHolder pluralsHolder = new MacStringsdictPluralsHolder();
-        pluralsHolder.loadEvents(pluralEvents);
+        pluralsHolder.loadEvents(pluralEvents); // make sure get proper number
         logger.debug("target locale: ", targetLocale);
         List<Event> completedForms = pluralsHolder.getCompletedForms(targetLocale);
         return completedForms;
     }
 
     class MacStringsdictPluralsHolder extends PluralsHolder {
+        String firstForm = null;
+        String comments = null;
+
         @Override
-        void adaptTextUnitToCLDRForm(ITextUnit textUnit, String cldrPluralForm) {
-//            nothing in android
-//            from PO
-//            if (!"one".equals(cldrPluralForm)) {
-//                // source should always be plural form unless for "one" form,
-//                // this is needed for language with only one entry like
-//                // japanese: [0] --> other
-//                logger.debug("Set message plural: {}", msgIDPlural);
-//                textUnit.setSource(new TextContainer(msgIDPlural));
-//            }
+        protected void loadEvents(List<Event> pluralEvents) {
+
+            if (!pluralEvents.isEmpty()) {
+                Event firstEvent = pluralEvents.get(0);
+                firstForm = getPluralFormFromSkeleton(firstEvent.getResource());
+                ITextUnit firstTextUnit = firstEvent.getTextUnit();
+                comments = textUnitUtils.getNote(firstTextUnit);
+            }
+
+            super.loadEvents(pluralEvents);
         }
 
+        String getPluralFormFromSkeleton(IResource resource) {
+            String toString = resource.getSkeleton().toString();
+            Pattern p = Pattern.compile("<key>");
+            Matcher matcher = p.matcher(toString);
+            String res = null;
+            if (matcher.find()) {
+                res = matcher.group(1);
+            }
+            return res;
+        }
+
+        @Override
+        protected Event createCopyOf(Event event, String sourceForm, String targetForm) {
+            logger.debug("Create copy of: {}, source form: {}, target form: {}", event.getTextUnit().getName(), sourceForm, targetForm);
+            ITextUnit textUnit = event.getTextUnit().clone();
+            renameTextUnit(textUnit, sourceForm, targetForm);
+            updateItemFormInSkeleton(textUnit);
+            replaceFormInSkeleton((GenericSkeleton) textUnit.getSkeleton(), sourceForm, targetForm);
+            Event copyOfOther = new Event(EventType.TEXT_UNIT, textUnit);
+            return copyOfOther;
+        }
+
+        void updateItemFormInSkeleton(ITextUnit textUnit) {
+            boolean ignore = true;
+            GenericSkeleton genericSkeleton = (GenericSkeleton) textUnit.getSkeleton();
+            for (GenericSkeletonPart genericSkeletonPart : genericSkeleton.getParts()) {
+                String partString = genericSkeletonPart.toString();
+                Pattern p = Pattern.compile("<key>quantity.+?</key>");
+                Matcher matcher = p.matcher(partString);
+                if (matcher.find()) {
+                    String match = matcher.group(1);
+                    genericSkeletonPart.setData(match);
+                    ignore = false;
+                }
+                if (ignore) {
+                    genericSkeletonPart.setData("");
+                }
+            }
+        }
+
+        @Override
         void replaceFormInSkeleton(GenericSkeleton genericSkeleton, String sourceForm, String targetForm) {
-//            from Android
             for (GenericSkeletonPart part : genericSkeleton.getParts()) {
                 StringBuilder sb = part.getData();
                 //TODO make more flexible
-                String str = sb.toString().replace(sourceForm + "\"", targetForm + "\"");
+                // todo check this works with the parser
+                String str = sb.toString().replace("<key>" + sourceForm + "</key>", "<key>" + targetForm + "</key>");
                 sb.replace(0, sb.length(), str);
             }
-
-//            from PO
-//            logger.debug("Replace in skeleton form: {} to {} ({})", sourceForm, targetForm, poPluralRule.cldrFormToPoForm(targetForm));
-//
-//            String cldrFormToGettextForm = poPluralRule.cldrFormToPoForm(targetForm);
-//
-//            if (cldrFormToGettextForm != null) {
-//                for (GenericSkeletonPart part : genericSkeleton.getParts()) {
-//                    StringBuilder sb = part.getData();
-//                    String str = sb.toString().replaceAll("msgstr\\[\\d\\]", "msgstr[" + cldrFormToGettextForm + "]");
-//                    sb.replace(0, sb.length(), str);
-//                }
-//            } else {
-//                logger.debug("No replacement, no PO idx for CLDR form: {}", targetForm);
-//            }
         }
 
-    }
-
-    private void setUsagesAnnotationOnTextUnit(Set<String> usagesFromSkeleton, ITextUnit textUnit) {
-        textUnit.setAnnotation(new UsagesAnnotation((usagesFromSkeleton)));
-    }
-
-    void addUsagesToTextUnit(TextUnit textUnit) {
-        Set<String> usageLocationsFromSkeleton = getUsagesFromSkeleton(textUnit.getSkeleton().toString());
-        setUsagesAnnotationOnTextUnit(usageLocationsFromSkeleton, textUnit);
-    }
-
-    Set<String> getUsagesFromSkeleton(String skeleton) {
-        Set<String> usages = new LinkedHashSet<>();
-
-        Pattern pattern = Pattern.compile(USAGE_LOCATION_PATTERN);
-        Matcher matcher = pattern.matcher(skeleton);
-
-        if (matcher.find()) {
-            String[] locations = matcher.group(USAGE_LOCATION_GROUP_NAME).split("\n");
-            for (int i = 0; i < locations.length; i++) {
-                // There should be no whitespace characters in usages, so remove them
-                usages.add(locations[i].replaceAll("\\s", ""));
-            }
-        }
-        return usages;
     }
 }
