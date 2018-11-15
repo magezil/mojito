@@ -2,6 +2,7 @@ package com.box.l10n.mojito.service.assetExtraction.extractor;
 
 import com.box.l10n.mojito.okapi.filters.AndroidFilter;
 import com.box.l10n.mojito.okapi.filters.CSVFilter;
+import com.box.l10n.mojito.okapi.filters.JSFilter;
 import com.box.l10n.mojito.okapi.filters.MacStringsFilter;
 import com.box.l10n.mojito.okapi.filters.MacStringsdictFilter;
 import com.box.l10n.mojito.okapi.filters.POFilter;
@@ -39,6 +40,7 @@ public class AssetPathToFilterConfigMapper {
     public static final String MACSTRINGSDICT_FILTER_CONFIG_ID = MacStringsdictFilter.FILTER_CONFIG_ID + "-stringsdict";
     public static final String RESX_FILTER_CONFIG_ID = XMLFilter.FILTER_CONFIG_ID + "-resx";
     public static final String XTB_FILTER_CONFIG_ID = XMLFilter.FILTER_CONFIG_ID + "-xtb";
+    public static final String JS_FILTER_CONFIG_ID = JSFilter.FILTER_CONFIG_ID + "-js";
     
     private enum AssetFilterType {
         CSV(CSVFilter.FILTER_CONFIG_ID, "csv"),
@@ -49,7 +51,8 @@ public class AssetPathToFilterConfigMapper {
         MACSTRINGSDICT(MACSTRINGSDICT_FILTER_CONFIG_ID, "stringsdict"),
         PO(POFilter.FILTER_CONFIG_ID, "pot"),
         RESX(RESX_FILTER_CONFIG_ID, "resx", "resw"),
-        XTB(XTB_FILTER_CONFIG_ID, "xtb");
+        XTB(XTB_FILTER_CONFIG_ID, "xtb"),
+        JS(JS_FILTER_CONFIG_ID, "ts", "js");
 
         private String configId;
         private Set<String> supportedExtensions = new HashSet<>();
