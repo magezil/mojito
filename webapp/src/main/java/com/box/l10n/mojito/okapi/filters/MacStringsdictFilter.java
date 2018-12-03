@@ -3,8 +3,6 @@ package com.box.l10n.mojito.okapi.filters;
 import com.box.l10n.mojito.okapi.CopyFormsOnImport;
 import com.box.l10n.mojito.okapi.TextUnitUtils;
 import net.sf.okapi.common.*;
-import net.sf.okapi.common.encoder.EncoderManager;
-import net.sf.okapi.common.exceptions.OkapiIOException;
 import net.sf.okapi.common.filters.FilterConfiguration;
 import net.sf.okapi.common.resource.*;
 import net.sf.okapi.common.skeleton.GenericSkeleton;
@@ -13,13 +11,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Configurable;
-import org.xml.sax.InputSource;
-import org.xml.sax.SAXException;
 
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
-import javax.xml.parsers.ParserConfigurationException;
-import java.io.IOException;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -43,8 +35,6 @@ public class MacStringsdictFilter extends XMLFilter {
     private static final String XML_COMMENT_PATTERN = "<!--(?<comment>.*?)-->";
     private static final String XML_COMMENT_GROUP_NAME = "comment";
 
-    // TODO: add usages to textunit
-
     // Match variable name
     static final String VARIABLE_NAME_PATTERN = "%#@.*@";
 
@@ -57,6 +47,7 @@ public class MacStringsdictFilter extends XMLFilter {
     boolean hasAnnotation;
 
     String comment;
+    Set<String> usages;
 
     @Override
     public String getName() {
@@ -146,17 +137,20 @@ public class MacStringsdictFilter extends XMLFilter {
             TextContainer source = new TextContainer(unescape(sourceString));
             textUnit.setSource(source);
             if (comment == null) {
-                getNoteFromEvents(textUnit);
+                getNoteAndLocationFromEvents(textUnit.toString());
             }
             textUnit.setProperty(new Property(Property.NOTE, comment));
+            addUsagesToTextUnit(textUnit);
         }
     }
 
+    void addUsagesToTextUnit(TextUnit textUnit) {
+        textUnit.setAnnotation(new UsagesAnnotation(usages));
+    }
 
-    protected void getNoteFromEvents(TextUnit textUnit) {
+    protected void getNoteAndLocationFromEvents(String text) {
 
         String note = null;
-        String text = textUnit.toString();
 
         StringBuilder commentBuilder = new StringBuilder();
 
@@ -164,12 +158,21 @@ public class MacStringsdictFilter extends XMLFilter {
         Matcher matcher = pattern.matcher(text);
 
         while (matcher.find()) {
-            if (commentBuilder.length() > 0) {
-                commentBuilder.append(" ");
+            String comment = matcher.group(XML_COMMENT_GROUP_NAME).trim();
+            if (comment.startsWith("Location: ")) {
+                if (usages == null) {
+                    usages = new LinkedHashSet<>();
+                }
+                usages.add(comment.replace("Location: ", ""));
+            } else {
+                if (commentBuilder.length() > 0) {
+                    commentBuilder.append(" ");
+                }
+                commentBuilder.append(comment);
             }
-            commentBuilder.append(matcher.group(XML_COMMENT_GROUP_NAME).trim());
         }
 
+        // get locations from here?
         if (commentBuilder.length() > 0) {
             note = commentBuilder.toString();
         }
@@ -293,8 +296,6 @@ public class MacStringsdictFilter extends XMLFilter {
         void replaceFormInSkeleton(GenericSkeleton genericSkeleton, String sourceForm, String targetForm) {
             for (GenericSkeletonPart part : genericSkeleton.getParts()) {
                 StringBuilder sb = part.getData();
-                //TODO make more flexible
-                // todo check this works with the parser
                 String str = sb.toString().replace("<key>" + sourceForm + "</key>", "<key>" + targetForm + "</key>");
                 sb.replace(0, sb.length(), str);
             }
