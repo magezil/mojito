@@ -1,17 +1,15 @@
 package com.box.l10n.mojito.okapi.filters;
 
 import java.util.ArrayList;
-import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Set;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
+import com.box.l10n.mojito.okapi.ExtractUsagesFromTextUnitComments;
 import net.sf.okapi.common.Event;
 import net.sf.okapi.common.EventType;
 import net.sf.okapi.common.filters.FilterConfiguration;
 import net.sf.okapi.common.resource.TextUnit;
 import net.sf.okapi.filters.regex.RegexFilter;
+import org.springframework.beans.factory.annotation.Autowired;
 
 /**
  * Overrides {@link RegexFilter} to handle escape/unescape special characters
@@ -22,8 +20,8 @@ public class MacStringsFilter extends RegexEscapeDoubleQuoteFilter {
 
     public static final String FILTER_CONFIG_ID = "okf_regex@mojito";
 
-    private static final String LOCATION_PATTERN = "/\\* Location: (?<location>.*?) \\*/";
-    private static final String LOCATION_GROUP_NAME = "location";
+    @Autowired
+    ExtractUsagesFromTextUnitComments extractUsagesFromTextUnitComments;
 
     @Override
     public String getName() {
@@ -48,32 +46,10 @@ public class MacStringsFilter extends RegexEscapeDoubleQuoteFilter {
 
         if (event.getEventType() == EventType.TEXT_UNIT) {
             TextUnit textUnit = (TextUnit) event.getTextUnit();
-            addUsagesToTextUnit(textUnit);
+            extractUsagesFromTextUnitComments.addUsagesToTextUnit(textUnit);
         }
 
         return event;
-    }
-
-    private void addUsagesToTextUnit(TextUnit textUnit) {
-        if (!textUnit.getName().contains("/* Location:")) {
-            return;
-        }
-
-        String name = textUnit.getName().split("\"")[1];
-        String usageString = textUnit.getName().split("\"")[0];
-        Set<String> usages = new LinkedHashSet<>();
-
-        Pattern pattern = Pattern.compile(LOCATION_PATTERN);
-        Matcher matcher = pattern.matcher(usageString);
-
-        while (matcher.find()) {
-            String usage = matcher.group(LOCATION_GROUP_NAME);
-            usages.add(usage);
-        }
-
-        textUnit.setName(name);
-        textUnit.setAnnotation(new UsagesAnnotation(usages));
-
     }
 
 }

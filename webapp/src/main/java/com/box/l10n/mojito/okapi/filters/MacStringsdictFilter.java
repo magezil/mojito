@@ -1,6 +1,7 @@
 package com.box.l10n.mojito.okapi.filters;
 
 import com.box.l10n.mojito.okapi.CopyFormsOnImport;
+import com.box.l10n.mojito.okapi.ExtractUsagesFromTextUnitComments;
 import com.box.l10n.mojito.okapi.TextUnitUtils;
 import net.sf.okapi.common.*;
 import net.sf.okapi.common.filters.FilterConfiguration;
@@ -43,12 +44,14 @@ public class MacStringsdictFilter extends XMLFilter {
     TextUnitUtils textUnitUtils;
 
     @Autowired
+    ExtractUsagesFromTextUnitComments extractUsagesFromTextUnitComments;
+
+    @Autowired
     UnescapeFilter unescapeFilter;
 
     boolean hasAnnotation;
 
     String comment;
-    Set<String> usages;
 
     @Override
     public String getName() {
@@ -112,8 +115,7 @@ public class MacStringsdictFilter extends XMLFilter {
             textUnit.setSource(source);
             extractNoteFromXMLCommentInSkeletonIfNone(textUnit);
             textUnitUtils.setNote(textUnit, comment);
-            addUsagesToTextUnit(textUnit);
-            textUnit.setAnnotation(new UsagesAnnotation(usages));
+            extractUsagesFromTextUnitComments.addUsagesToTextUnit(textUnit);
         }
     }
 
@@ -167,41 +169,6 @@ public class MacStringsdictFilter extends XMLFilter {
         }
 
         return note;
-    }
-
-    /**
-     * Gets the usage locations from the XML comments in the skeleton.
-     *
-     * @param skeleton that may contains comments containing location
-     * @return the locations or empty set
-     */
-    protected Set<String> getLocationsFromXMLCommentsInSkeleton(String skeleton) {
-
-        Set<String> locations = new LinkedHashSet<>();
-
-        Pattern pattern = Pattern.compile(XML_COMMENT_PATTERN);
-        Matcher matcher = pattern.matcher(skeleton);
-
-        while (matcher.find()) {
-            String comment = matcher.group(XML_COMMENT_GROUP_NAME).trim();
-            if (comment.startsWith("Location: ")) {
-                locations.add(comment.replace("Location: ", ""));
-            }
-        }
-
-        return locations;
-    }
-
-    /**
-     * Add usage locations to the text unit
-     * @param textUnit the text unit to add usages
-     */
-    void addUsagesToTextUnit(TextUnit textUnit) {
-        String skeleton = textUnit.getSkeleton().toString();
-        Set<String> usagesFromSkeleton = getLocationsFromXMLCommentsInSkeleton(skeleton);
-        if (usagesFromSkeleton.size() > 0) {
-            usages = usagesFromSkeleton;
-        }
     }
 
     private Event getNextWithProcess() {
