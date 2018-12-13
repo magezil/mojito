@@ -278,9 +278,10 @@ public class MacStringsdictFilter extends XMLFilter {
     class MacStringsdictPluralsHolder extends PluralsHolder {
 
         public static final String KEY_RES_KEY = "<key>(?<res>.+?)</key>";
+        public static final String KEY_RES_GROUP = "res";
+
         public static final String PLURAL_FORM_KEY = "\n\\s*?<key>.+?$";
         String firstForm = null;
-        String comments = null;
 
         @Override
         protected void loadEvents(List<Event> pluralEvents) {
@@ -307,7 +308,7 @@ public class MacStringsdictFilter extends XMLFilter {
             Matcher matcher = p.matcher(toString);
             String res = null;
             while (matcher.find()) {
-                res = matcher.group("res").trim();
+                res = matcher.group(KEY_RES_GROUP).trim();
             }
             return res;
         }
